@@ -1,7 +1,6 @@
 import streamlit as st
 
-# --- PAGE SETUP ---
-st.set_page_config(layout="wide")  # Configuración del layout
+st.set_page_config(layout="wide")
 
 about_page = st.Page(
     "views/home.py",
@@ -32,10 +31,7 @@ project_4_page = st.Page(
     icon=":material/local_shipping:",
 )
 
-# --- NAVIGATION SETUP [WITHOUT SECTIONS] ---
-# pg = st.navigation(pages=[about_page, project_1_page, project_2_page])
 
-# --- NAVIGATION SETUP [WITH SECTIONS]---
 pg = st.navigation(
     {   
         "Opciones": [about_page],
@@ -46,15 +42,16 @@ pg = st.navigation(
 st.markdown(
     """
     <style>
-    .stApp > header > div > div > div:nth-child(2) {
+    .css-1jc7ptx, .e1ewe7hr3, .viewerBadge_container__1QSob,
+    .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137,
+    .viewerBadge_text__1JaDK {
         display: none;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
-# --- SHARED ON ALL PAGES ---
+
 st.logo("assets/logo.png")
 
-# --- RUN NAVIGATION ---
 pg.run()
