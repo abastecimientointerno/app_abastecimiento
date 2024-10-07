@@ -42,7 +42,17 @@ pg = st.navigation(
         "Aplicaciones": [project_1_page, project_2_page,project_3_page,project_4_page],
     }
 )
-
+# Ocultar el ícono de GitHub
+st.markdown(
+    """
+    <style>
+    .stApp > header > div > div > div:nth-child(2) {
+        display: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # --- SHARED ON ALL PAGES ---
 st.logo("assets/logo.png")
 
