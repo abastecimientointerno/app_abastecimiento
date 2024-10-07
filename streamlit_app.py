@@ -11,7 +11,7 @@ about_page = st.Page(
 
 project_1_page = st.Page(
     "views/app_gestion_de_insumos.py",
-    title="Gestion de insumo",
+    title="Gestion de insumos",
     icon=":material/local_fire_department:",
 )
 

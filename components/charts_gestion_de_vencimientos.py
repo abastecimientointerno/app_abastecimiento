@@ -54,11 +54,9 @@ def generate_bar_plot(resultados_df):
     # Crear el gráfico apilado al 100%
     fig_barras = px.bar(
         valor_por_estado, 
-        x='Fecha de Vencimiento', 
-        y='Porcentaje', 
         color='Estado',
-        title='Análisis de gestión de vencimiento',
-        labels={'Porcentaje': 'Porcentaje (%)', 'Fecha de Vencimiento': ''},
+        title='Categoria de gestión',
+        labels={'Porcentaje': 'Porcentaje (%)', 'Fecha de vencimiento': ''},
         barmode='stack',  # Cambiado a 'stack' para apilar
         color_discrete_sequence=['#FFC107', '#F44336', '#9C27B0']  # Colores: Ámbar, Rojo y Magenta
     )
@@ -75,7 +73,7 @@ def generate_bar_plot(resultados_df):
             yshift=5  # Ajuste para que no se superponga a la barra
         )
     
-    fig_barras.update_xaxes(title='Fecha de Vencimiento', categoryorder='total ascending')  # Ordenar el eje x correctamente
+    fig_barras.update_xaxes(title='Fecha de vencimiento', categoryorder='total ascending')  # Ordenar el eje x correctamente
     fig_barras.update_yaxes(title='Porcentaje (%)')
     
     # Mover la leyenda a la parte superior centrada
