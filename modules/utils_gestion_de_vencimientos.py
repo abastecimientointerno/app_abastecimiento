@@ -7,9 +7,11 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.formatting.rule import ColorScaleRule
 
 def process_data(mb52_df, mb25_df):
-    mb52_df['Cad./FPC'] = pd.to_datetime(mb52_df['Cad./FPC'], errors='coerce')
-    mb25_df['Fecha de necesidad'] = pd.to_datetime(mb25_df['Fecha de necesidad'], errors='coerce')
+    # Establecer un formato estándar para las fechas
+    mb52_df['Cad./FPC'] = pd.to_datetime(mb52_df['Cad./FPC'], format='%Y-%m-%d', errors='coerce')
+    mb25_df['Fecha de necesidad'] = pd.to_datetime(mb25_df['Fecha de necesidad'], format='%Y-%m-%d', errors='coerce')
     
+    # Definir un rango de fechas para filtrar
     fecha_limite = datetime.now() + timedelta(days=90)
     proximos_a_vencer = mb52_df[(mb52_df['Cad./FPC'] > datetime.now()) & (mb52_df['Cad./FPC'] <= fecha_limite)]
     
@@ -87,9 +89,13 @@ def process_data(mb52_df, mb25_df):
     resultados_df = pd.DataFrame(resultados)
     detalles_df = pd.DataFrame(detalles)
     
+    # Asegurarnos de que las fechas están correctamente formateadas
+    resultados_df['Fecha de Vencimiento'] = pd.to_datetime(resultados_df['Fecha de Vencimiento'], errors='coerce')
+    
     return resultados_df, detalles_df
 
 def create_excel(resultados_df, detalles_df):
+    # Crear tabla resumen por centro y estado
     resumen_centro_estado = resultados_df.pivot_table(
         values='Valorizado',
         index='Centro',
@@ -128,6 +134,7 @@ def create_excel(resultados_df, detalles_df):
             for cell in worksheet[col][1:]:
                 cell.number_format = '0.00%'
         
+        # Crear gráfico de barras
         chart = BarChart()
         chart.type = "col"
         chart.grouping = "percentStacked"
