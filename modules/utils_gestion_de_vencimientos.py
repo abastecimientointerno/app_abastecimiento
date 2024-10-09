@@ -20,8 +20,8 @@ def process_data(mb52_df, mb25_df):
     
     for index, material in proximos_a_vencer.iterrows():
         centro = material['Centro']
-        material_id = material['Material']
-        material_texto = material['Texto breve de material']
+        codigo_material = material['Material']
+        descripcion = material['Texto breve de material']
         cantidad_disponible = material['Libre utilización']
         lote = material['Lote']
         valorizado = material['Valor libre util.']
@@ -29,26 +29,26 @@ def process_data(mb52_df, mb25_df):
         ubicacion = material['Ubicación']
         fecha_vencimiento = material['Cad./FPC']
 
-        reservas_mismo_centro = mb25_df[(mb25_df['Texto breve de material'] == material_texto) & 
-                                          (mb25_df['Centro'] == centro)]
-        reservas_otro_centro = mb25_df[(mb25_df['Texto breve de material'] == material_texto) & 
-                                         (mb25_df['Centro'] != centro)]
+        reservas_mismo_centro = mb25_df[(mb25_df['Texto breve de material'] == descripcion) & 
+                                        (mb25_df['Centro'] == centro)]
+        reservas_otro_centro = mb25_df[(mb25_df['Texto breve de material'] == descripcion) & 
+                                        (mb25_df['Centro'] != centro)]
         
         if not reservas_mismo_centro.empty:
-            estado = "Gestión"
+            estado = "Gestion"
             cantidad_reservada = reservas_mismo_centro['Cantidad diferencia'].sum()
             num_reservas = reservas_mismo_centro['Nº reserva'].tolist()
             detalles.append({
-                'Centro': centro,
-                'Código Material': material_id,
-                'Descripción': material_texto,
-                'Cantidad Disponible': cantidad_disponible,
-                'Unidad de Medida': material['Unidad medida base'],
-                'Centro Necesidad': centro,
-                'Cantidad Reservada': reservas_mismo_centro['Cantidad diferencia'].tolist(),
-                'Número de Reservas': num_reservas,
-                'Posición': reservas_mismo_centro['Nº pos.reserva traslado'].tolist(),
-                'Estado': estado
+                'centro': centro,
+                'codigo_material': codigo_material,
+                'descripcion': descripcion,
+                'cantidad': cantidad_disponible,
+                'um': material['Unidad medida base'],
+                'centro_necesidad': centro,
+                'cantidad_reservada': reservas_mismo_centro['Cantidad diferencia'].tolist(),
+                'reserva': num_reservas,
+                'posicion': reservas_mismo_centro['Nº pos.reserva traslado'].tolist(),
+                'estado': estado
             })
         elif not reservas_otro_centro.empty:
             estado = "Traslado"
@@ -56,16 +56,16 @@ def process_data(mb52_df, mb25_df):
             num_reservas = reservas_otro_centro['Nº reserva'].tolist()
             centro_necesidad = reservas_otro_centro['Centro'].unique().tolist()
             detalles.append({
-                'Centro': centro,
-                'Código Material': material_id,
-                'Descripción': material_texto,
-                'Cantidad Disponible': cantidad_disponible,
-                'Unidad de Medida': material['Unidad medida base'],
-                'Centro Necesidad': centro_necesidad,
-                'Cantidad Reservada': reservas_otro_centro['Cantidad diferencia'].tolist(),
-                'Número de Reservas': num_reservas,
-                'Posición': reservas_otro_centro['Nº pos.reserva traslado'].tolist(),
-                'Estado': estado
+                'centro': centro,
+                'codigo_material': codigo_material,
+                'descripcion': descripcion,
+                'cantidad': cantidad_disponible,
+                'um': material['Unidad medida base'],
+                'centro_necesidad': centro_necesidad,
+                'cantidad_reservada': reservas_otro_centro['Cantidad diferencia'].tolist(),
+                'reserva': num_reservas,
+                'posicion': reservas_otro_centro['Nº pos.reserva traslado'].tolist(),
+                'estado': estado
             })
         else:
             estado = "Sin necesidad"
@@ -73,42 +73,43 @@ def process_data(mb52_df, mb25_df):
             num_reservas = []
 
         resultados.append({
-            'Centro': centro,
-            'Material': material_id,
-            'Descripción': material_texto,
-            'Almacén': almacen,
-            'Lote': lote,
-            'Valorizado': valorizado,
-            'Ubicación': ubicacion,
-            'Fecha de Vencimiento': fecha_vencimiento,
-            'Cantidad Disponible': cantidad_disponible,
-            'Cantidad Reservada': cantidad_reservada,
-            'Estado': estado
+            'centro': centro,
+            'codigo_material': codigo_material,
+            'descripcion': descripcion,
+            'almacen': almacen,
+            'lote': lote,
+            'valorizado': valorizado,
+            'ubicacion': ubicacion,
+            'fecha_vencimiento': fecha_vencimiento,
+            'cantidad': cantidad_disponible,
+            'cantidad_reservada': cantidad_reservada,
+            'estado': estado
         })
     
     resultados_df = pd.DataFrame(resultados)
     detalles_df = pd.DataFrame(detalles)
     
     # Asegurarnos de que las fechas están correctamente formateadas
-    resultados_df['Fecha de Vencimiento'] = pd.to_datetime(resultados_df['Fecha de Vencimiento'], errors='coerce')
+    resultados_df['fecha_vencimiento'] = pd.to_datetime(resultados_df['fecha_vencimiento'], errors='coerce')
     
     return resultados_df, detalles_df
+
 
 def create_excel(resultados_df, detalles_df):
     # Crear tabla resumen por centro y estado
     resumen_centro_estado = resultados_df.pivot_table(
-        values='Valorizado',
-        index='Centro',
-        columns='Estado',
+        values='valorizado',
+        index='centro',
+        columns='estado',
         aggfunc='sum',
         fill_value=0
     ).reset_index()
 
-    for estado in ['Gestión', 'Traslado', 'Sin necesidad']:
+    for estado in ['Gestion', 'Traslado', 'Sin necesidad']:
         if estado not in resumen_centro_estado.columns:
             resumen_centro_estado[estado] = 0
     
-    resumen_centro_estado = resumen_centro_estado[['Centro', 'Gestión', 'Traslado', 'Sin necesidad']]
+    resumen_centro_estado = resumen_centro_estado[['centro', 'Gestion', 'Traslado', 'Sin necesidad']]
     
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
