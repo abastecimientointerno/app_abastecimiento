@@ -2,42 +2,28 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 
-about_page = st.Page(
-    "views/home.py",
-    title="Inicio",
-    icon=":material/home:",
-    default=True,
-)
+# Lista de páginas
+pages = [
+    {"module": "views/home.py", "title": "Inicio", "icon": ":material/home:", "default": True},
+    {"module": "views/app_gestion_de_insumos.py", "title": "Gestión de insumos", "icon": ":material/local_fire_department:"},
+    {"module": "views/app_gestion_de_vencimientos.py", "title": "Gestión de vencimientos", "icon": ":material/event_busy:"},
+    {"module": "views/app_herramienta_de_planificacion.py", "title": "Herramienta de planificación", "icon": ":material/chart_data:"},
+    {"module": "views/app_materiales_en_transito.py", "title": "Materiales en tránsito", "icon": ":material/local_shipping:"},
+    # Agrega más páginas aquí
+]
 
-project_1_page = st.Page(
-    "views/app_gestion_de_insumos.py",
-    title="Gestion de insumos",
-    icon=":material/local_fire_department:",
-)
+# Crear objetos de página
+streamlit_pages = [
+    st.Page(page["module"], title=page["title"], icon=page["icon"], default=page.get("default", False))
+    for page in pages
+]
 
-project_2_page = st.Page(
-    "views/app_gestion_de_vencimientos.py",
-    title="Gestion de vencimientos",
-    icon=":material/event_busy:",
-)
-project_3_page = st.Page(
-    "views/app_herramienta_de_planificacion.py",
-    title="Herramienta de planificacion",
-    icon=":material/chart_data:",
-)
-project_4_page = st.Page(
-    "views/app_materiales_en_transito.py",
-    title="Materiales en tránsito",
-    icon=":material/local_shipping:",
-)
+# Agrupar páginas
+pg = st.navigation({
+    "Opciones": [streamlit_pages[0]],  # Inicio
+    "Aplicaciones": streamlit_pages[1:],  # Las demás páginas
+})
 
-
-pg = st.navigation(
-    {   
-        "Opciones": [about_page],
-        "Aplicaciones": [project_1_page, project_2_page,project_3_page,project_4_page],
-    }
-)
 # Ocultar el ícono de GitHub
 st.markdown(
     """

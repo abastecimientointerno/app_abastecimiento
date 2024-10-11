@@ -7,12 +7,12 @@ from components.charts_gestion_de_vencimientos import generate_bar_plot_from_lin
 st.title("Gestión de vencimientos")
 
 # Cargar archivos en la página principal
-st.header("Carga de archivos Excel")
+st.subheader("Carga de archivos")
 col1, col2 = st.columns(2)
 with col1:
-    mb52_file = st.file_uploader("Cargar archivo MB52", type=['xlsx'])
+    mb52_file = st.file_uploader("Cargar archivo :red[MB52]:", type=['xlsx'])
 with col2:
-    mb25_file = st.file_uploader("Cargar archivo MB25", type=['xlsx'])
+    mb25_file = st.file_uploader("Cargar archivo :red[MB25]:", type=['xlsx'])
 
 # Solo proceder si ambos archivos han sido cargados
 if mb52_file is not None and mb25_file is not None:
