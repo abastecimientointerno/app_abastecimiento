@@ -3,10 +3,60 @@ import pandas as pd
 from streamlit_echarts import st_echarts
 import ast
 from collections import defaultdict
+import plotly.graph_objects as go
+import streamlit as st
 
 
+def kpi_valorizado(resultados_df):
+    # Sumar el total 'valorizado'
+    total_valorizado = resultados_df['valorizado'].sum()
 
+    # Formatear el valor como moneda en soles peruanos
+    total_valorizado_formatted = f"S/. {total_valorizado:,.2f}"
 
+    # CSS para dar estilo a la tarjeta
+    st.markdown(
+        """
+        <style>
+        .card {
+            background-color: #f9f9f9;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .card h4 {
+            margin: 0;
+            color: #333;
+        }
+        .card p {
+            margin: 5px 0 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: #007BFF;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Crear la tarjeta usando HTML
+    st.markdown(
+        f"""
+        <div class="card">
+            <h3>Valorizado de vencimientos en los próximos 90 días</h3>
+            <p>{total_valorizado_formatted}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    return total_valorizado
+
+def show_chart(fig):
+    st.plotly_chart(fig, use_container_width=True)
 
 def generate_bar_plot_from_line_data(resultados_df):
     # Convertir 'fecha_vencimiento' a formato datetime
@@ -18,41 +68,59 @@ def generate_bar_plot_from_line_data(resultados_df):
     # Redondear 'valorizado' a dos decimales
     valor_por_mes['valorizado'] = valor_por_mes['valorizado'].round(2)
     
-    # Convertir Period a string en formato 'YYYY-MM'
-    valor_por_mes['fecha_vencimiento'] = valor_por_mes['fecha_vencimiento'].astype(str)
-    
-    # Formatear los valores para las etiquetas y el eje Y
-    valor_por_mes['valorizado_formatted'] = valor_por_mes['valorizado'].apply(lambda x: f"{x:,.2f}")
-    
-    # Crear opciones para el gráfico de barras
-    options = {
-        "title": {"text": "Valorizado de vencimientos por mes"},
-        "tooltip": {"trigger": "axis"},
-        "xAxis": {
-            "type": "category",
-            "data": valor_por_mes['fecha_vencimiento'].tolist(),
-            "axisLabel": {"rotate": 45, "formatter": "{value}"}
-        },
-        "yAxis": {
-            "type": "value",
-            "name": "Valor Total (S/.)",
-            "axisLabel": {
-            }
-        },
-        "series": [{
-            "name": "Valorizado",
-            "type": "bar",
-            "data": valor_por_mes['valorizado'].tolist(),
-            "label": {
-                "show": True,
-                "formatter": valor_por_mes['valorizado_formatted'].tolist()  # Usar los valores formateados
-            }
-        }]
-    }
-    return options
+    # Convertir Period a string en formato 'MM/YYYY'
+    valor_por_mes['fecha_vencimiento'] = valor_por_mes['fecha_vencimiento'].dt.to_timestamp().dt.strftime('%m/%Y')
 
+    # Crear el gráfico de líneas
+    fig = go.Figure()
 
+    # Añadir la línea suavizada
+    fig.add_trace(go.Scatter(
+        x=valor_por_mes['fecha_vencimiento'],
+        y=valor_por_mes['valorizado'],
+        mode='lines+markers',
+        name='Valorizado',
+        line=dict(shape='spline', smoothing=1.1, width=1.5),  # Línea suavizada y más gruesa
+        marker=dict(
+            symbol='circle-open',
+            size=12,),  # Tamaño de los marcadores
+    ))
 
+    # Actualizar el diseño del gráfico
+    fig.update_layout(
+        title_font=dict(size=16,color='black'),
+        yaxis_tickprefix='S/',
+        yaxis_tickformat=',.2f',
+        xaxis_tickangle=-45,
+        yaxis=dict(
+            showgrid=True, 
+            gridcolor='AliceBlue',
+            tickfont=dict( weight='bold')
+            ),  # Color de la cuadrícula
+        xaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(242, 226, 5, 1)',
+            tickfont=dict( weight='bold')
+            ),
+        
+        # Añadir fondo blanco semi-transparente a las etiquetas
+        annotations=[
+            dict(
+                x=x,
+                y=y,
+                text=f"💰 S/{y:,.2f}",
+                showarrow=True,
+                yshift=20,
+                font=dict(size=15,color='black'),
+                bgcolor='rgba(191, 242, 5, 1)',
+                borderwidth=1,
+                borderpad=4                          # Padding interno
+            )
+            for x, y in zip(valor_por_mes['fecha_vencimiento'], valor_por_mes['valorizado'])
+        ]
+    )
+
+    return fig
 
 
 
@@ -73,58 +141,25 @@ def generate_category_bar_plot(resultados_df):
     # Unir los totales al DataFrame original
     valor_por_estado = valor_por_estado.merge(total_por_mes, on='fecha_vencimiento')
 
-    # Calcular el porcentaje, redondeando a 2 decimales
-    valor_por_estado['porcentaje'] = round((valor_por_estado['valorizado'] / valor_por_estado['total']) * 100, 2)
+    # Crear la tabla pivote sumando los valores de "valorizado"
+    pivot_df = pd.pivot_table(valor_por_estado, 
+                              index='estado', 
+                              columns='fecha_vencimiento', 
+                              values='valorizado', 
+                              aggfunc='sum', 
+                              fill_value=0)
 
-    # Preparar datos para el gráfico
-    fechas = valor_por_estado['fecha_vencimiento'].unique().tolist()
-    estados = valor_por_estado['estado'].unique().tolist()
+    # Agregar columna de "Total general" por estado
+    pivot_df['Total general'] = pivot_df.sum(axis=1)
 
-    series_data = []
-    for estado in estados:
-        data = valor_por_estado[valor_por_estado['estado'] == estado]['porcentaje'].tolist()
-        series_data.append({
-            "name": estado,
-            "type": "bar",
-            "stack": "total",
-            "label": {
-                "show": True,
-                "position": "inside",
-                # Ajustar el formato para mostrar solo dos decimales
-                "formatter": "{c} %"
-            },
-            "data": data
-        })
+    # Agregar fila de "Total general" por columna
+    pivot_df.loc['Total general'] = pivot_df.sum()
 
-    # Crear opciones para el gráfico de barras apiladas
-    options = {
-        "title": {"text": "Valorizado según su estado"},
-        "tooltip": {
-            "trigger": "axis",
-            # Ajustar el tooltip para mostrar valores con formato de porcentaje redondeado a 2 decimales
-            "formatter": "{b0}: {c0} %"
-        },
-        "legend": {"data": estados, "top": "bottom"},
-        "xAxis": {
-            "type": "category",
-            "data": fechas,
-            "axisLabel": {"rotate": 45, "formatter": "{value}"}
-        },
-        "yAxis": {
-            "type": "value",
-            "name": "Porcentaje (%)",
-            "axisLabel": {"formatter": "{value} %"}
-        },
-        "series": series_data
-    }
+    # Reordenar para que la fila de 'Total general' esté al final
 
-    return options
+    return pivot_df
 
 
-
-
-def show_chart(options):
-    st_echarts(options=options, height="400px")
 
 # Función para asegurarse de que los campos que contienen listas se lean correctamente
 def safe_eval(value):
