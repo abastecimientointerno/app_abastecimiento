@@ -34,7 +34,7 @@ def kpi_valorizado(resultados_df):
         .card p {
             font-size: 28px;
             font-weight: bold;
-            color: rgba(191, 242, 5, 1);
+            color: rgba(194, 82, 242, 1);
         }
         </style>
         """,
@@ -153,6 +153,18 @@ def tabla_resumen(resultados_df):
     # Agregar fila de "Total general" por columna
     pivot_df.loc['Total general'] = pivot_df.sum()
 
+    # Añadir columna de "Total general %" para cada estado (sin incluir la fila "Total general")
+    total_general = pivot_df.loc['Total general', 'Total general']
+    pivot_df['Total general %'] = (pivot_df['Total general'] / total_general) * 100
+
+    # Dar formato de moneda (S/ con separadores de miles y 2 decimales) a todas las columnas excepto "Total general %"
+    for col in pivot_df.columns:
+        if col != 'Total general %':
+            pivot_df[col] = pivot_df[col].apply(lambda x: f"S/ {x:,.2f}")
+
+    # Dar formato al porcentaje con 2 decimales
+    pivot_df['Total general %'] = pivot_df['Total general %'].apply(lambda x: f"{x:.2f}%")
+
     return pivot_df
 
 
@@ -269,7 +281,7 @@ def generar_grafico(df):
             "expandAndCollapse": True,
             "animationDuration": 550,
             "animationDurationUpdate": 750,
-            "initialTreeDepth": 1,
+            "initialTreeDepth": 2,
             "roam": "move",
             "itemStyle": {
                 "color": "#AEF249",  # Verde claro para los nodos principales

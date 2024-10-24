@@ -51,6 +51,6 @@ if mb52_file is not None and mb25_file is not None:
         st.download_button(
             label="Descargar archivo excel",
             data=excel_file,
-            file_name="resultados_gestion_logistica.xlsx",
+            file_name="resultados_gestion_vencimientos.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
