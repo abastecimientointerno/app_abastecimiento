@@ -32,10 +32,9 @@ def kpi_valorizado(resultados_df):
             color: #333;
         }
         .card p {
-            margin: 5px 0 0;
-            font-size: 18px;
+            font-size: 28px;
             font-weight: bold;
-            color: #007BFF;
+            color: rgba(191, 242, 5, 1);
         }
         </style>
         """,
@@ -88,7 +87,6 @@ def generate_bar_plot_from_line_data(resultados_df):
 
     # Actualizar el diseño del gráfico
     fig.update_layout(
-        title_font=dict(size=16,color='black'),
         yaxis_tickprefix='S/',
         yaxis_tickformat=',.2f',
         xaxis_tickangle=-45,
@@ -124,7 +122,7 @@ def generate_bar_plot_from_line_data(resultados_df):
 
 
 
-def generate_category_bar_plot(resultados_df):
+def tabla_resumen(resultados_df):
     # Convertir 'fecha_vencimiento' a formato datetime
     resultados_df['fecha_vencimiento'] = pd.to_datetime(resultados_df['fecha_vencimiento'], errors='coerce')
 
@@ -154,8 +152,6 @@ def generate_category_bar_plot(resultados_df):
 
     # Agregar fila de "Total general" por columna
     pivot_df.loc['Total general'] = pivot_df.sum()
-
-    # Reordenar para que la fila de 'Total general' esté al final
 
     return pivot_df
 
@@ -189,10 +185,13 @@ def build_tree(resultados_df):
             descripcion = row['descripcion']
             estado = row['estado']
             cantidad = row['cantidad']
+            valorizado = row['valorizado']  # Incluimos el valor del material
+            lote = row['lote']  # Incluir el lote
             centros_necesidad = row['centro_necesidad']
             cantidades_reservadas = row['cantidad_reservada']
 
-            material_info = f"{codigo_material}: {descripcion} = {cantidad}"
+            # Incluir valorizado y lote en el nodo de material
+            material_info = f"{codigo_material}: {descripcion} - Lote: {lote} : {cantidad} (Valor: S/. {valorizado})"
             estado_node = estado_nodos[estado]
             if not estado_node["name"]:
                 estado_node["name"] = f"{estado}"
@@ -233,46 +232,58 @@ def build_tree(resultados_df):
 def generar_grafico(df):
     tree_data = build_tree(df)
 
-    # Opciones del gráfico con etiquetas estilizadas
+    # Opciones del gráfico con etiquetas estilizadas y paleta de colores
     options = {
         "tooltip": {"trigger": "item", "triggerOn": "mousemove"},
         "series": [{
             "type": "tree",
             "data": [tree_data],
             "top": "10%",
-            "left": "5%",
+            "left": "10%",
             "bottom": "10%",
-            "right": "20%",
-            "symbolSize": 7,
+            "right": "15%",
+            "symbolSize": 10,  # Tamaño de los nodos
             "label": {
                 "position": "left",
                 "verticalAlign": "middle",
                 "align": "right",
-                "fontSize": 12,
-                "color": "#555",
-                "backgroundColor": "rgba(255,255,255,0.8)",
+                "fontSize": 11,
+                "color": "#F2F2F2",  # Color blanco claro para las etiquetas
+                "backgroundColor": "rgba(38, 38, 38, 0.9)",  # Fondo oscuro para las etiquetas
                 "padding": [4, 8, 4, 8],
                 "borderRadius": 5,
-                "borderColor": "#ccc",
+                "borderColor": "#AEF249",  # Color verde claro para los bordes de las etiquetas
                 "borderWidth": 1,
                 "shadowColor": "rgba(0, 0, 0, 0.2)",
-                "shadowBlur": 3
+                "shadowBlur": 1
             },
             "leaves": {
                 "label": {
                     "position": "right",
                     "verticalAlign": "middle",
-                    "align": "left"
+                    "align": "left",
+                    "color": "#F2F2F2"  # Etiquetas de las hojas
                 }
             },
-            "emphasis": {"focus": "descendant"},
+            "emphasis": {"focus": "descendant", "itemStyle": {"borderColor": "#F28D8D"}},  # Resaltado en rojo claro
             "expandAndCollapse": True,
             "animationDuration": 550,
             "animationDurationUpdate": 750,
             "initialTreeDepth": 1,
-            "roam": "move"
-        }]
+            "roam": "move",
+            "itemStyle": {
+                "color": "#AEF249",  # Verde claro para los nodos principales
+                "borderColor": "#E2F266",  # Amarillo claro para los bordes de los nodos
+                "borderWidth": 2
+            },
+            "lineStyle": {
+                "color": "#E2F266",  # Líneas amarillas claras
+                "width": 2,
+                "curveness": 0.5
+            }
+        }],
+        "backgroundColor": "#262626"  # Fondo oscuro
     }
 
-    # Devolver el gráfico para mostrarlo
-    return st_echarts(options=options, height="800px")
+    # Renderizar el gráfico
+    st_echarts(options=options, height="800px")

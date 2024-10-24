@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from modules.utils_gestion_de_vencimientos import process_data, create_excel
-from components.charts_gestion_de_vencimientos import generate_bar_plot_from_line_data, generar_grafico, generate_category_bar_plot, show_chart, kpi_valorizado
+from components.charts_gestion_de_vencimientos import generate_bar_plot_from_line_data, generar_grafico, tabla_resumen, show_chart, kpi_valorizado
 
 st.title("Gestión de vencimientos")
 
@@ -24,28 +24,27 @@ if mb52_file is not None and mb25_file is not None:
     st.divider()
     # Mostrar resumen de vencimientos
     st.header("¿Que hace la herramienta? 🤔")
-    st.write("Identifica automáticamente los materiales que están próximos a vencer en los próximos 90 días. Luego, evalúa la necesidad de estos materiales en diferentes plantas. Los resultados se clasifican en tres categorías: Gestión para materiales requeridos en la misma planta, Traslado para aquellos que necesitan ser enviados a otra planta, y Sin necesidad para los que no presentan demanda. Además, tendrás la opción de generar un archivo Excel con toda la información, facilitando el seguimiento y la toma de decisiones estratégicas en la gestión de inventarios.")
+    st.write("Esta herramienta identifica automáticamente los materiales que vencerán en los próximos 90 días y evalúa su necesidad en las diferentes plantas, clasificándolos en 'Gestión', 'Traslado' y 'Sin necesidad'. Con esta información, podremos gestionar los materiales de manera efectiva y ademas genera un archivo Excel para facilitar el seguimiento y la toma de decisiones en la gestión de inventarios")
     
     # Generar gráfico de barras para el valorizado de vencimientos
     bar_options = generate_bar_plot_from_line_data(resultados_df)
-    st.subheader("Valorizado de proximo a vencer 🧐")
+    st.subheader("1.🔎 Evaluemos el valor de los materiales que están próximos a vencer en los próximos 90 días 🧐")
     kpi_1 = kpi_valorizado(resultados_df)
     
     show_chart(bar_options)
     
     # Generar gráfico de barras apiladas por estado
-    category_options = generate_category_bar_plot(resultados_df)
-    st.subheader("📊 Análisis de necesidades en otros centros 📊")
-    st.write("Si aprovechamos los posibles traslados podriamos evitar una posible perdida por vencimiento ✨")
-    st.dataframe(category_options)
+    tabla_resumen = tabla_resumen(resultados_df)
+    st.subheader("2.✨ Analizamos e identificamos oportunidades de consumo para materiales próximos a vencer. 📊")
+    st.write("Al aprovechar los posibles traslados, podremos minimizar el riesgo de pérdidas por vencimiento de materiales. ⏳")
+    st.dataframe(tabla_resumen)
 
-    
     # Generar gráfico collapsible con la función personalizada
     st.divider()
-    st.subheader("Distribución de necesidades 👀")
-    st.write("Utiliza este gráfico interactivo para analizar los materiales que están próximos a vencer y las plantas donde existe una necesidad actualmente 🙂‍↕️")
+    st.subheader("3.🧐 Exploración de oportunidades de consumo para materiales próximos a vencer 👀")
+    st.write("Utilizamos este gráfico interactivo para identificar los materiales que están próximos a vencer y los centros donde actualmente existe una necesidad. Así, podríamos trasladar los materiales para minimizar los riesgos de pérdida por vencimiento y también podremos verificar si hay alguna necesidad de esos materiales en nuestro propio centro. 🙂‍↕️")
     generar_grafico(detalles_df) 
-
+    st.info('Recuerda que puedes obtener información más detallada sobre traslados, reservas y lotes si descargas el archivo de Excel con los resultados del análisis.')    
     # Botón para exportar a Excel
     if st.button("Generar reporte"):
         excel_file = create_excel(resultados_df, detalles_df)
