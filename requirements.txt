@@ -1,0 +1,4 @@
+openpyxl
+prophet
+plotly.express
+streamlit_echarts
