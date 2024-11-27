@@ -53,9 +53,11 @@ def procesar_datos_principales(dfs):
     
     dfs['mb51'] = generar_ids_y_stock(dfs['mb51'])
     df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general = generar_y_separar_mb52(dfs['mb52'])
+    df_cuota =  pd.DataFrame(dfs['db_cuota'])
     
     df_ratios = pd.DataFrame(dfs['db_ratios_planta_insumo'])
     df_ratios['id_mix'] = df_ratios['id_localidad'] + df_ratios['id_insumo'].astype(str)
+    
     df_homologado = pd.DataFrame(dfs['db_insumos'])
     df_homologado['id_mix'] = df_homologado['id_localidad'] + df_homologado['id_insumo'].astype(str)
     
@@ -64,6 +66,7 @@ def procesar_datos_principales(dfs):
                                on='id_mix', how='left'
                                )
     
+    
     df_base = pd.merge(df_homologacion, 
                        dfs['db_capacidad_instalada'][['id_localidad', 'cip', 'rendimiento', 'cobertura_ideal', 'maxima_descarga', 'cobertura_meta']],
                        on='id_localidad', how='left')
@@ -71,6 +74,7 @@ def procesar_datos_principales(dfs):
     df_base['stock_cobertura_ideal'] = (
         (df_base['ratio_nominal'] * df_base['maxima_descarga']) / df_base['rendimiento'] * df_base['cobertura_ideal']
         )
+    
     
     df_consumo_total = dfs['mb51'].groupby(['id_localidad', 'id_insumo'])['Cantidad'].sum().abs().reset_index()
     
@@ -84,7 +88,7 @@ def procesar_datos_principales(dfs):
     
     df_consumo_total['id_localidad_insumo'] = df_consumo_total['id_localidad'].astype(str) + df_consumo_total['id_insumo'].astype(str)
     
-    return df_valor_centros, df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, df_consumo_total, df_datos
+    return df_valor_centros, df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, df_consumo_total, df_datos, df_cuota
 
 # Ejecutar análisis cuando se haga clic en el botón
 if st.button("Ejecutar análisis"):
@@ -98,8 +102,9 @@ if st.button("Ejecutar análisis"):
             }
             dfs = cargar_datos_en_paralelo(archivos_subidos)
             
+            
             # Procesar datos principales
-            df_valor_centros, df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, df_consumo_total, df_datos = procesar_datos_principales(dfs)
+            df_valor_centros, df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, df_consumo_total, df_datos, df_cuota = procesar_datos_principales(dfs)
             
             # Procesar el resto de los datos
             df_resultado = procesar_datos(df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, 
@@ -118,7 +123,7 @@ if st.button("Ejecutar análisis"):
                 df_datos.to_excel(writer, sheet_name='seguimiento_pesca', index=False)
                 df_valor_centros.to_excel(writer, sheet_name='valorizado_centros', index=False)
                 df_proyeccion_pesca.to_excel(writer, sheet_name='proyeccion_pesca', index=False)
-                
+                df_cuota.to_excel(writer, sheet_name='cuota', index=False)
 
                 # Hoja con la fecha y hora actual
                 pd.DataFrame({'tolerancia': [tolerancia]}).to_excel(writer, sheet_name='parametros', index=False)

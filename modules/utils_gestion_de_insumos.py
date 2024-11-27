@@ -81,9 +81,8 @@ def procesar_datos(df_base: pd.DataFrame, df_mb52_produccion: pd.DataFrame, df_m
                    df_mb52_hub: pd.DataFrame, df_mb52_general: pd.DataFrame, df_consumo_total: pd.DataFrame, 
                    df_insumos: pd.DataFrame) -> pd.DataFrame:
     """Procesa y combina los diferentes DataFrames para generar el resultado final."""
-    df_base['id_localidad_insumo'] = df_base['id_localidad'] + df_base['id_insumo'].astype(str)
+    df_base['id_localidad_insumo'] = df_base['id_localidad'] + df_base['id_sap'].astype(str)
     
-    # Asegúrate de que todas las columnas necesarias estén presentes
     stock_columns = [
         'stock_libre_mas_calidad_produccion',
         'stock_libre_mas_calidad_transito',
@@ -96,7 +95,6 @@ def procesar_datos(df_base: pd.DataFrame, df_mb52_produccion: pd.DataFrame, df_m
     
     df_base = df_base.fillna(0)
     
-    # Calcula el stock_libre_mas_calidad total
     df_base['stock_libre_mas_calidad'] = df_base[stock_columns].sum(axis=1)
     
     df_base['excedentes'] = np.maximum(df_base['stock_libre_mas_calidad'] - df_base['stock_cobertura_ideal'], 0)
