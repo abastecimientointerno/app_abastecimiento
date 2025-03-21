@@ -2,11 +2,10 @@ import pandas as pd
 import streamlit as st
 from components.charts_gesion_de_insumos import graficar_proyeccion_pesca
 from modules.utils_gestion_de_insumos import (generar_ids_y_stock, generar_ids_y_stock_valor, generar_y_separar_mb52, 
-                        procesar_datos,consultar_pesca,realizar_proyeccion
+                        procesar_datos, consultar_pesca, realizar_proyeccion
 )
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-
 
 # Configuración de la app
 st.title("Gestión de insumos")
@@ -49,23 +48,43 @@ def cargar_datos_en_paralelo(archivos):
 
 # Procesar datos principales
 def procesar_datos_principales(dfs):
+    # Crear mapeo de id_sap a id_insumo desde df_insumos
+    df_insumos = pd.DataFrame(dfs['db_insumos'])
+    mapeo_sap_insumo = df_insumos[['id_sap', 'id_insumo']].drop_duplicates()
+    
+    # Mapear id_insumo en MB51 y MB52
+    if 'Material' in dfs['mb51'].columns:
+        dfs['mb51'] = pd.merge(
+            dfs['mb51'], 
+            mapeo_sap_insumo.rename(columns={'id_sap': 'Material'}),
+            on='Material', 
+            how='left'
+        )
+    
+    if 'Material' in dfs['mb52'].columns:
+        dfs['mb52'] = pd.merge(
+            dfs['mb52'], 
+            mapeo_sap_insumo.rename(columns={'id_sap': 'Material'}),
+            on='Material', 
+            how='left'
+        )
+    
     df_valor_centros = generar_ids_y_stock_valor(dfs['mb52'], 'general')
     
     dfs['mb51'] = generar_ids_y_stock(dfs['mb51'])
     df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general = generar_y_separar_mb52(dfs['mb52'])
-    df_cuota =  pd.DataFrame(dfs['db_cuota'])
+    df_cuota = pd.DataFrame(dfs['db_cuota'])
     
     df_ratios = pd.DataFrame(dfs['db_ratios_planta_insumo'])
     df_ratios['id_mix'] = df_ratios['id_localidad'] + df_ratios['id_insumo'].astype(str)
     
-    df_homologado = pd.DataFrame(dfs['db_insumos'])
+    df_homologado = pd.DataFrame(df_insumos)
     df_homologado['id_mix'] = df_homologado['id_localidad'] + df_homologado['id_insumo'].astype(str)
     
     df_homologacion = pd.merge(df_homologado, 
                                df_ratios[['id_mix','ratio_nominal','familia','familia_2']],
                                on='id_mix', how='left'
                                )
-    
     
     df_base = pd.merge(df_homologacion, 
                        dfs['db_capacidad_instalada'][['id_localidad', 'cip', 'rendimiento', 'cobertura_ideal', 'maxima_descarga', 'cobertura_meta']],
@@ -75,7 +94,7 @@ def procesar_datos_principales(dfs):
         (df_base['ratio_nominal'] * df_base['maxima_descarga']) / df_base['rendimiento'] * df_base['cobertura_ideal']
         )
     
-    
+    # Calcular consumo total por id_localidad e id_insumo (no por id_sap)
     df_consumo_total = dfs['mb51'].groupby(['id_localidad', 'id_insumo'])['Cantidad'].sum().abs().reset_index()
     
     # Pesca api
@@ -101,25 +120,19 @@ if st.button("Ejecutar análisis"):
                 'mb52': uploaded_file_mb52,
             }
             dfs = cargar_datos_en_paralelo(archivos_subidos)
-            
-            
             # Procesar datos principales
             df_valor_centros, df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, df_consumo_total, df_datos, df_cuota = procesar_datos_principales(dfs)
             
             # Procesar el resto de los datos
-            df_resultado = procesar_datos(df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, 
+            df_resultado, df_resultado_por_insumo = procesar_datos(df_base, df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general, 
                                           df_consumo_total, dfs['db_insumos'])
             
             df_proyeccion_pesca = realizar_proyeccion(df_datos)
             
-            # Mostrar resultados en Streamlit
-            st.info("Vista previa de la pesca descargada y sus proyecciones a 15 días")
-            # Después de realizar la proyección
-            graficar_proyeccion_pesca(df_proyeccion_pesca)
-            
             # Guardar archivo Excel con los resultados
             with pd.ExcelWriter('resultados.xlsx') as writer:
                 df_resultado.to_excel(writer, sheet_name='seguimiento_insumos', index=False)
+                df_resultado_por_insumo.to_excel(writer, sheet_name='seguimiento_por_insumo', index=False)
                 df_datos.to_excel(writer, sheet_name='seguimiento_pesca', index=False)
                 df_valor_centros.to_excel(writer, sheet_name='valorizado_centros', index=False)
                 df_proyeccion_pesca.to_excel(writer, sheet_name='proyeccion_pesca', index=False)

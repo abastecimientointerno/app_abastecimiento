@@ -13,12 +13,19 @@ def generar_id_localidad(centro: str, almacen: str) -> str:
 def generar_ids_y_stock(df: pd.DataFrame, tipo: str = 'general') -> pd.DataFrame:
     """Genera las columnas necesarias para un DataFrame específico."""
     df['id_localidad'] = df.apply(lambda row: generar_id_localidad(row['Centro'], row['Almacén']), axis=1)
-    df['id_insumo'] = df['Material']
+    
+    # Asegurarse de que id_insumo esté correctamente establecido
+    # Si id_insumo ya está presente en el dataframe, usarlo
+    # De lo contrario, usar Material como id_sap (comportamiento anterior)
+    if 'id_insumo' not in df.columns:
+        df['id_sap'] = df['Material']  # Guardar id_sap original
+        df['id_insumo'] = df['Material']
     
     if 'Libre utilización' in df.columns and 'Inspecc.de calidad' in df.columns and tipo == 'general':
         df['stock_libre_mas_calidad'] = df['Libre utilización'] + df['Inspecc.de calidad']
     
     df['id_localidad_insumo'] = df['id_localidad'] + df['id_insumo'].astype(str)
+    df['id_localidad_sap'] = df['id_localidad'] + df['id_sap'].astype(str) if 'id_sap' in df.columns else df['id_localidad_insumo']
     return df
 
 def generar_ids_y_stock_valor(df: pd.DataFrame, tipo: str = 'general') -> pd.DataFrame:
@@ -34,21 +41,21 @@ def generar_y_separar_mb52(df: pd.DataFrame, tipo: str = 'general') -> Tuple[pd.
     """Genera las columnas necesarias para el DataFrame MB52 y lo separa en cuatro DataFrames según el almacén."""
     df = generar_ids_y_stock(df, tipo)
     
-    df = df.groupby(['id_localidad', 'Almacén', 'id_insumo', 'id_localidad_insumo'])['stock_libre_mas_calidad'].sum().reset_index()
+    # Primero agrupar por id_localidad_insumo (que incluye el id_insumo, no el id_sap)
+    df_intermedio = df.groupby(['id_localidad', 'Almacén', 'id_insumo', 'id_localidad_insumo'])['stock_libre_mas_calidad'].sum().reset_index()
     
     def filter_and_rename(df, almacen, suffix):
         filtered = df[df['Almacén'] == almacen].copy()
         filtered = filtered.rename(columns={'stock_libre_mas_calidad': f'stock_libre_mas_calidad_{suffix}'})
         return filtered
     
-    df_mb52_produccion = filter_and_rename(df, 'PI01', 'produccion')
-    df_mb52_transito = filter_and_rename(df, '', 'transito')
-    df_mb52_hub = filter_and_rename(df, 'L003', 'hub')
-    df_mb52_general = df[~df['Almacén'].isin(['PI01', '', 'L003'])].copy()
+    df_mb52_produccion = filter_and_rename(df_intermedio, 'PI01', 'produccion')
+    df_mb52_transito = filter_and_rename(df_intermedio, '', 'transito')
+    df_mb52_hub = filter_and_rename(df_intermedio, 'L003', 'hub')
+    df_mb52_general = df_intermedio[~df_intermedio['Almacén'].isin(['PI01', '', 'L003'])].copy()
     df_mb52_general = df_mb52_general.rename(columns={'stock_libre_mas_calidad': 'stock_libre_mas_calidad_general'})
     
     return df_mb52_produccion, df_mb52_transito, df_mb52_hub, df_mb52_general
-
 
 def calcular_cobertura(df: pd.DataFrame) -> pd.DataFrame:
     """Calcula varias métricas de cobertura para el DataFrame."""
@@ -79,9 +86,10 @@ def calcular_cobertura(df: pd.DataFrame) -> pd.DataFrame:
 
 def procesar_datos(df_base: pd.DataFrame, df_mb52_produccion: pd.DataFrame, df_mb52_transito: pd.DataFrame, 
                    df_mb52_hub: pd.DataFrame, df_mb52_general: pd.DataFrame, df_consumo_total: pd.DataFrame, 
-                   df_insumos: pd.DataFrame) -> pd.DataFrame:
+                   df_insumos: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Procesa y combina los diferentes DataFrames para generar el resultado final."""
-    df_base['id_localidad_insumo'] = df_base['id_localidad'] + df_base['id_sap'].astype(str)
+    # Trabajamos con id_localidad_insumo para los merge
+    df_base['id_localidad_insumo'] = df_base['id_localidad'] + df_base['id_insumo'].astype(str)
     
     stock_columns = [
         'stock_libre_mas_calidad_produccion',
@@ -105,9 +113,37 @@ def procesar_datos(df_base: pd.DataFrame, df_mb52_produccion: pd.DataFrame, df_m
     
     df_base = calcular_cobertura(df_base)
     
-    return df_base
+    # Crear vista agrupada por id_insumo
+    columnas_a_sumar = [
+        'stock_libre_mas_calidad', 'stock_cobertura_ideal', 'excedentes', 'faltantes', 
+        'Cantidad', 'consumo_diario'
+    ] + stock_columns
     
-
+    # Solo incluir columnas que existen en df_base
+    columnas_a_sumar = [col for col in columnas_a_sumar if col in df_base.columns]
+    
+    # Columnas para calcular promedios
+    columnas_promedio = ['ratio_nominal', 'rendimiento', 'cobertura_ideal', 'maxima_descarga']
+    columnas_promedio = [col for col in columnas_promedio if col in df_base.columns]
+    
+    # Preparar diccionario de agregación
+    agg_dict = {col: 'sum' for col in columnas_a_sumar}
+    agg_dict.update({col: 'mean' for col in columnas_promedio})
+    
+    # Seleccionar primera ocurrencia para campos descriptivos
+    campos_primero = ['descripcion', 'nombre_insumo', 'familia', 'familia_2']
+    campos_primero = [col for col in campos_primero if col in df_base.columns]
+    if campos_primero:
+        agg_dict.update({col: 'first' for col in campos_primero})
+    
+    # Agrupar por id_insumo
+    df_vista_por_insumo = df_base.groupby(['id_insumo']).agg(agg_dict).reset_index()
+    
+    # Recalcular coberturas para la vista agrupada
+    if 'stock_cobertura_ideal' in df_vista_por_insumo.columns and all(col in df_vista_por_insumo.columns for col in ['ratio_nominal', 'maxima_descarga', 'rendimiento', 'cobertura_ideal']):
+        df_vista_por_insumo = calcular_cobertura(df_vista_por_insumo)
+    
+    return df_base, df_vista_por_insumo
 
 #Api portal pesca
 def consultar_pesca(inicio, final):
