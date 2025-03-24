@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-from components.charts_gesion_de_insumos import graficar_proyeccion_pesca
 from modules.utils_gestion_de_insumos import (generar_ids_y_stock, generar_ids_y_stock_valor, generar_y_separar_mb52, 
                         procesar_datos, consultar_pesca, realizar_proyeccion
 )

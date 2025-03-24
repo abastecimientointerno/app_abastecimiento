@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from typing import Tuple, List
-from streamlit_echarts import st_echarts
 import requests
 import json
 from prophet import Prophet
@@ -15,8 +14,6 @@ def generar_ids_y_stock(df: pd.DataFrame, tipo: str = 'general') -> pd.DataFrame
     df['id_localidad'] = df.apply(lambda row: generar_id_localidad(row['Centro'], row['Almacén']), axis=1)
     
     # Asegurarse de que id_insumo esté correctamente establecido
-    # Si id_insumo ya está presente en el dataframe, usarlo
-    # De lo contrario, usar Material como id_sap (comportamiento anterior)
     if 'id_insumo' not in df.columns:
         df['id_sap'] = df['Material']  # Guardar id_sap original
         df['id_insumo'] = df['Material']
